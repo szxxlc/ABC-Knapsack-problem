@@ -125,7 +125,11 @@ Produkt $i$ ma:
 
 - cenę jednostkową $p_i$,
 
-- promocję typu $a_i + b_i$ gratis,
+- objętość jenostkową $v_i$,
+
+- kategorię $c_i$,
+
+- opcjonalną promocję typu $a_i + b_i$ gratis,
 
 - zakupioną liczbę sztuk $x_i$.
 
