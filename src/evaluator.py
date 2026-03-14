@@ -78,3 +78,80 @@ def calculate_total_volume(instance: ProblemInstance, solution: Solution) -> flo
         total += product.unit_volume * quantity
 
     return total
+
+
+def count_total_items_in_category(
+    instance: ProblemInstance,
+    solution: Solution,
+    category: str,
+) -> int:
+    validate_solution(instance, solution)
+
+    total = 0
+    for product, quantity in zip(instance.products, solution.quantities):
+        if product.category == category:
+            total += quantity
+
+    return total
+
+
+def count_distinct_products_in_category(
+    instance: ProblemInstance,
+    solution: Solution,
+    category: str,
+) -> int:
+    validate_solution(instance, solution)
+
+    count = 0
+    for product, quantity in zip(instance.products, solution.quantities):
+        if product.category == category and quantity > 0:
+            count += 1
+
+    return count
+
+
+def is_volume_feasible(instance: ProblemInstance, solution: Solution) -> bool:
+    total_volume = calculate_total_volume(instance, solution)
+    return total_volume <= instance.cart_volume_limit
+
+
+def is_budget_feasible(instance: ProblemInstance, solution: Solution) -> bool:
+    if instance.budget_limit is None:
+        return True
+
+    actual_cost = calculate_actual_cost(instance, solution)
+    return actual_cost <= instance.budget_limit
+
+
+def is_shopping_requirements_feasible(
+    instance: ProblemInstance,
+    solution: Solution,
+) -> bool:
+    validate_solution(instance, solution)
+
+    for requirement in instance.shopping_requirements:
+        if requirement.distinct_required:
+            category_count = count_distinct_products_in_category(
+                instance,
+                solution,
+                requirement.category,
+            )
+        else:
+            category_count = count_total_items_in_category(
+                instance,
+                solution,
+                requirement.category,
+            )
+
+        if category_count < requirement.minimum:
+            return False
+
+    return True
+
+
+def is_feasible(instance: ProblemInstance, solution: Solution) -> bool:
+    return (
+        is_volume_feasible(instance, solution)
+        and is_budget_feasible(instance, solution)
+        and is_shopping_requirements_feasible(instance, solution)
+    )
