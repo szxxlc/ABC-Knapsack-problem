@@ -212,3 +212,79 @@ def get_unsatisfied_requirements(
             unsatisfied.append(requirement)
 
     return unsatisfied
+
+from src.problem import ProblemInstance, Product, ShoppingRequirement, Solution
+
+
+def copy_solution(solution: Solution) -> Solution:
+    return Solution(quantities=solution.quantities.copy())
+
+
+def remove_one_unit(solution: Solution, product_index: int) -> Solution:
+    if product_index < 0 or product_index >= len(solution.quantities):
+        raise IndexError("Product index is out of range.")
+
+    new_solution = copy_solution(solution)
+    new_solution.quantities[product_index] = max(
+        0,
+        new_solution.quantities[product_index] - 1,
+    )
+    return new_solution
+
+
+def calculate_score_loss_after_removal(
+    instance: ProblemInstance,
+    solution: Solution,
+    product_index: int,
+) -> float:
+    if solution.quantities[product_index] <= 0:
+        return float("inf")
+
+    current_score = calculate_score(instance, solution)
+    candidate_solution = remove_one_unit(solution, product_index)
+    candidate_score = calculate_score(instance, candidate_solution)
+
+    return current_score - candidate_score
+
+
+def select_best_product_to_remove(
+    instance: ProblemInstance,
+    solution: Solution,
+) -> int | None:
+    best_index = None
+    best_loss = float("inf")
+
+    for product_index, quantity in enumerate(solution.quantities):
+        if quantity <= 0:
+            continue
+
+        loss = calculate_score_loss_after_removal(
+            instance,
+            solution,
+            product_index,
+        )
+
+        if loss < best_loss:
+            best_loss = loss
+            best_index = product_index
+
+    return best_index
+
+
+def repair_hard_constraints(
+    instance: ProblemInstance,
+    solution: Solution,
+) -> Solution:
+    validate_solution(instance, solution)
+
+    repaired = copy_solution(solution)
+
+    while not is_feasible(instance, repaired):
+        product_index = select_best_product_to_remove(instance, repaired)
+
+        if product_index is None:
+            break
+
+        repaired = remove_one_unit(repaired, product_index)
+
+    return repaired
