@@ -11,7 +11,7 @@ Zamiast klasycznego plecaka:
 
   - opcjonalnie budżetu,
 
-- część produktów ma promocje ilościowe z limitem produktów,
+- część produktów ma promocje ilościowe z limitem liczby sztuk objętych promocją,
 
 - część produktów nie ma promocji,
 
@@ -86,15 +86,17 @@ Dla każdej pozycji listy zakupów określona jest:
 
 - wymagane minimum sztuk,
 
-- informacja, czy produkty muszą być różne.
+- informacja, czy produkty muszą być różne,
+
+- kara za każdą brakującą jednostkę wymagania.
 
 Przykładowe pozycje na liście zakupów:
 
-- owoce: minimum 2, różne = True,
+- owoce: minimum 2, różne = True, kara = 3.0,
 
-- nabiał minimum 2, różne = False,
+- nabiał minimum 2, różne = False, kara = 1.5,
 
-- pieczywo: minimum 1, różne = False.
+- pieczywo: minimum 1, różne = False. kara = 2.0,
 
 **Ograniczenia zakupów**
 
@@ -106,6 +108,9 @@ Przykładowe pozycje na liście zakupów:
   - wariant budżetowy "przed wypłatą" - ograniczenie budżetu
 
   - wariant bez budżetu "po wypłacie" - brak ograniczenia budżetu
+
+Objętość koszyka oraz budżet są ograniczeniami **twardymi**.  
+Lista zakupów jest ograniczeniem **miękkim** - jej niespełnienie nie odrzuca rozwiązania, lecz powoduje naliczenie kary proporcjonalnej do stopnia niespełnienia wymagań.
 
 ---
 
@@ -197,11 +202,37 @@ Oszczędność definiowana jest jako różnica między kosztem regularnym a rzec
 
 $savings(x) = regularCost(x) - actualCost(x)$
 
+#### Niedobór dla wymagania kategorii
+
+Dla kategorii $c$ oraz przypisanego minimum $R_c$ definiowany jest niedobór.
+
+Jeśli dla danej kategorii $different = False$:
+
+$shortage_c(x) = \max\left(0, R_c - \sum_{i \in I_c} x_i\right)$
+
+Jeśli dla danej kategorii $different = True$:
+
+$shortage_c(x) = \max\left(0, R_c - \sum_{i \in I_c} \mathbf{1}(x_i > 0)\right)$
+
+#### Kara za wymaganie kategorii
+
+Dla każdej kategorii definiowana jest kara jednostkowa $\lambda_c$ za każdą brakującą jednostkę wymagania:
+
+$penalty_c(x) = \lambda_c \cdot shortage_c(x)$
+
+#### Łączna kara za listę zakupów
+
+$shoppingPenalty(x) = \sum_{c \in C} penalty_c(x)$
+
 #### Cel optymalizacji
 
-Celem jest maksymalizacja oszczędności:
+Celem jest maksymalizacja wyniku rozwiązania:
 
-$\max \ savings(x)$
+$\max \ score(x)$
+
+gdzie:
+
+$score(x) = savings(x) - shoppingPenalty(x)$
 
 ### Ograniczenia
 
@@ -229,28 +260,12 @@ Wówczas:
 
 $actualCost(x) \leq B$
 
-#### Ograniczenia listy zakupów - bez wymogu różnorodności
+#### Lista zakupów jako ograniczenie miękkie
 
-Dla kategorii $c$:
+Lista zakupów nie jest traktowana jako ograniczenie twarde.  
+Jej niespełnienie powoduje naliczenie kary uwzględnianej w funkcji celu.
 
-$R_c$ — wymagane minimum,
+Dla kategorii $c$ kara zależy od niedoboru względem wymaganego minimum:
 
-$I_c$ — zbiór produktów należących do tej kategorii.
-
-Jeśli dla danej kategorii $different = False$, to wymaganie ma postać:
-
-$\sum_{i \in I_c} x_i \geq R_c$
-
-Oznacza to, że liczy się łączna liczba sztuk produktów z tej kategorii.
-
-#### Ograniczenia listy zakupów - z wymogiem różnorodności
-
-Jeśli dla danej kategorii $different = True$, to trzeba kupić odpowiednią liczbę różnych produktów należących do tej kategorii.
-
-W modelu matematycznym można wprowadzić pomocnicze zmienne binarne:
-
-$u_i = \begin{cases} 1 & \text{jeśli } x_i > 0 \\ 0 & \text{jeśli } x_i = 0 \end{cases}$
-
-Wtedy dla kategorii $c$:
-
-$\sum_{i \in I_c} u_i \geq R_c$
+- dla wymagań bez różnorodności liczony jest brak łącznej liczby sztuk,
+- dla wymagań z różnorodnością liczony jest brak liczby różnych produktów w kategorii.

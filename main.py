@@ -1,12 +1,9 @@
-from src.problem import Sale, Product, ShoppingRequirement, ProblemInstance, Solution
+from src.problem import Product, Sale, ShoppingRequirement, ProblemInstance, Solution
 from src.evaluator import (
-    calculate_regular_cost,
-    calculate_actual_cost,
     calculate_savings,
-    calculate_total_volume,
-    is_volume_feasible,
-    is_budget_feasible,
-    is_shopping_requirements_feasible,
+    calculate_shopping_penalty,
+    calculate_score,
+    are_shopping_requirements_fully_satisfied,
     is_feasible,
 )
 
@@ -44,22 +41,28 @@ def main():
         cart_volume_limit=10.0,
         budget_limit=20.0,
         shopping_requirements=[
-            ShoppingRequirement(category="Fruit", minimum=2, distinct_required=True),
-            ShoppingRequirement(category="Dairy", minimum=1, distinct_required=False),
+            ShoppingRequirement(
+                category="Fruit",
+                minimum=2,
+                distinct_required=True,
+                penalty_per_missing=3.0,
+            ),
+            ShoppingRequirement(
+                category="Dairy",
+                minimum=2,
+                distinct_required=False,
+                penalty_per_missing=1.5,
+            ),
         ],
     )
 
-    solution = Solution(quantities=[1, 1, 4])
+    solution = Solution(quantities=[1, 0, 1])
 
-    print("Regular cost:", calculate_regular_cost(instance, solution))
-    print("Actual cost:", calculate_actual_cost(instance, solution))
     print("Savings:", calculate_savings(instance, solution))
-    print("Total volume:", calculate_total_volume(instance, solution))
-
-    print("\nVolume feasible:", is_volume_feasible(instance, solution))
-    print("Budget feasible:", is_budget_feasible(instance, solution))
-    print("Shopping requirements feasible:", is_shopping_requirements_feasible(instance, solution))
-    print("Overall feasible:", is_feasible(instance, solution))
+    print("Shopping penalty:", calculate_shopping_penalty(instance, solution))
+    print("Score:", calculate_score(instance, solution))
+    print("Shopping list fully satisfied:", are_shopping_requirements_fully_satisfied(instance, solution))
+    print("Hard constraints feasible:", is_feasible(instance, solution))
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ class ShoppingRequirement:
     category: str
     minimum: int = 1
     distinct_required: bool = False
+    penalty_per_missing: float = 1.0
     
 @dataclass
 class ProblemInstance:

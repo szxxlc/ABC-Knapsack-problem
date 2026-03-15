@@ -1,4 +1,4 @@
-from src.problem import ProblemInstance, Product, Solution
+from src.problem import ProblemInstance, ShoppingRequirement, Product, Solution
 
 
 def validate_solution(instance: ProblemInstance, solution: Solution) -> None:
@@ -123,27 +123,71 @@ def is_budget_feasible(instance: ProblemInstance, solution: Solution) -> bool:
     return actual_cost <= instance.budget_limit
 
 
-def is_shopping_requirements_feasible(
+def get_requirement_shortage(
+    instance: ProblemInstance,
+    solution: Solution,
+    requirement: ShoppingRequirement,
+) -> int:
+    validate_solution(instance, solution)
+
+    if requirement.distinct_required:
+        current_value = count_distinct_products_in_category(
+            instance,
+            solution,
+            requirement.category,
+        )
+    else:
+        current_value = count_total_items_in_category(
+            instance,
+            solution,
+            requirement.category,
+        )
+
+    return max(0, requirement.minimum - current_value)
+
+
+def calculate_requirement_penalty(
+    instance: ProblemInstance,
+    solution: Solution,
+    requirement: ShoppingRequirement,
+) -> float:
+    shortage = get_requirement_shortage(instance, solution, requirement)
+    return shortage * requirement.penalty_per_missing
+
+
+def calculate_shopping_penalty(
+    instance: ProblemInstance,
+    solution: Solution,
+) -> float:
+    validate_solution(instance, solution)
+
+    total_penalty = 0.0
+
+    for requirement in instance.shopping_requirements:
+        total_penalty += calculate_requirement_penalty(
+            instance,
+            solution,
+            requirement,
+        )
+
+    return total_penalty
+
+
+def calculate_score(instance: ProblemInstance, solution: Solution) -> float:
+    savings = calculate_savings(instance, solution)
+    shopping_penalty = calculate_shopping_penalty(instance, solution)
+
+    return savings - shopping_penalty
+
+
+def are_shopping_requirements_fully_satisfied(
     instance: ProblemInstance,
     solution: Solution,
 ) -> bool:
     validate_solution(instance, solution)
 
     for requirement in instance.shopping_requirements:
-        if requirement.distinct_required:
-            category_count = count_distinct_products_in_category(
-                instance,
-                solution,
-                requirement.category,
-            )
-        else:
-            category_count = count_total_items_in_category(
-                instance,
-                solution,
-                requirement.category,
-            )
-
-        if category_count < requirement.minimum:
+        if get_requirement_shortage(instance, solution, requirement) > 0:
             return False
 
     return True
@@ -153,5 +197,18 @@ def is_feasible(instance: ProblemInstance, solution: Solution) -> bool:
     return (
         is_volume_feasible(instance, solution)
         and is_budget_feasible(instance, solution)
-        and is_shopping_requirements_feasible(instance, solution)
     )
+    
+def get_unsatisfied_requirements(
+    instance: ProblemInstance,
+    solution: Solution,
+) -> list[ShoppingRequirement]:
+    validate_solution(instance, solution)
+
+    unsatisfied = []
+
+    for requirement in instance.shopping_requirements:
+        if get_requirement_shortage(instance, solution, requirement) > 0:
+            unsatisfied.append(requirement)
+
+    return unsatisfied
