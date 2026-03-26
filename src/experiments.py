@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import csv
+import statistics
 import time
 
 from src.abc_algorithm import ArtificialBeeColony
@@ -40,20 +41,72 @@ class SingleRunResult:
 @dataclass
 class ExperimentSummary:
     run_results: list[SingleRunResult] = field(default_factory=list)
+
+    instance_num_products: int = 0
+    instance_cart_volume_limit: float = 0.0
+    instance_budget_limit: float | None = None
+    instance_num_requirements: int = 0
+    instance_num_products_with_sale: int = 0
+    instance_num_products_without_sale: int = 0
+
     best_score_min: float = 0.0
     best_score_max: float = 0.0
     best_score_avg: float = 0.0
+    best_score_median: float = 0.0
+    best_score_std: float = 0.0
+
     savings_min: float = 0.0
     savings_max: float = 0.0
     savings_avg: float = 0.0
+    savings_median: float = 0.0
+    savings_std: float = 0.0
+
     penalty_min: float = 0.0
     penalty_max: float = 0.0
     penalty_avg: float = 0.0
+    penalty_median: float = 0.0
+    penalty_std: float = 0.0
+
     execution_time_min: float = 0.0
     execution_time_max: float = 0.0
     execution_time_avg: float = 0.0
+    execution_time_median: float = 0.0
+    execution_time_std: float = 0.0
+
     fully_satisfied_count: int = 0
     feasible_count: int = 0
+
+    best_run_index: int = -1
+    best_run_seed: int = -1
+    best_run_score: float = 0.0
+
+
+def _safe_mean(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    return statistics.mean(values)
+
+
+def _safe_std(values: list[float]) -> float:
+    if len(values) < 2:
+        return 0.0
+    return statistics.stdev(values)
+
+
+def extract_instance_metadata(instance: ProblemInstance) -> dict:
+    num_products = len(instance.products)
+    num_products_with_sale = sum(
+        product.sale is not None for product in instance.products
+    )
+
+    return {
+        "instance_num_products": num_products,
+        "instance_cart_volume_limit": instance.cart_volume_limit,
+        "instance_budget_limit": instance.budget_limit,
+        "instance_num_requirements": len(instance.shopping_requirements),
+        "instance_num_products_with_sale": num_products_with_sale,
+        "instance_num_products_without_sale": num_products - num_products_with_sale,
+    }
 
 
 def run_single_experiment(
@@ -113,9 +166,13 @@ def run_single_experiment(
     )
 
 
-def summarize_results(run_results: list[SingleRunResult]) -> ExperimentSummary:
+def summarize_results(
+    instance: ProblemInstance,
+    run_results: list[SingleRunResult],
+) -> ExperimentSummary:
     if not run_results:
-        return ExperimentSummary()
+        metadata = extract_instance_metadata(instance)
+        return ExperimentSummary(**metadata)
 
     best_scores = [result.best_score for result in run_results]
     savings_values = [result.savings for result in run_results]
@@ -132,22 +189,42 @@ def summarize_results(run_results: list[SingleRunResult]) -> ExperimentSummary:
         for result in run_results
     )
 
+    best_run = max(run_results, key=lambda result: result.best_score)
+    metadata = extract_instance_metadata(instance)
+
     return ExperimentSummary(
         run_results=run_results,
+        instance_num_products=metadata["instance_num_products"],
+        instance_cart_volume_limit=metadata["instance_cart_volume_limit"],
+        instance_budget_limit=metadata["instance_budget_limit"],
+        instance_num_requirements=metadata["instance_num_requirements"],
+        instance_num_products_with_sale=metadata["instance_num_products_with_sale"],
+        instance_num_products_without_sale=metadata["instance_num_products_without_sale"],
         best_score_min=min(best_scores),
         best_score_max=max(best_scores),
-        best_score_avg=sum(best_scores) / len(best_scores),
+        best_score_avg=_safe_mean(best_scores),
+        best_score_median=statistics.median(best_scores),
+        best_score_std=_safe_std(best_scores),
         savings_min=min(savings_values),
         savings_max=max(savings_values),
-        savings_avg=sum(savings_values) / len(savings_values),
+        savings_avg=_safe_mean(savings_values),
+        savings_median=statistics.median(savings_values),
+        savings_std=_safe_std(savings_values),
         penalty_min=min(penalty_values),
         penalty_max=max(penalty_values),
-        penalty_avg=sum(penalty_values) / len(penalty_values),
+        penalty_avg=_safe_mean(penalty_values),
+        penalty_median=statistics.median(penalty_values),
+        penalty_std=_safe_std(penalty_values),
         execution_time_min=min(execution_times),
         execution_time_max=max(execution_times),
-        execution_time_avg=sum(execution_times) / len(execution_times),
+        execution_time_avg=_safe_mean(execution_times),
+        execution_time_median=statistics.median(execution_times),
+        execution_time_std=_safe_std(execution_times),
         fully_satisfied_count=fully_satisfied_count,
         feasible_count=feasible_count,
+        best_run_index=best_run.run_index,
+        best_run_seed=best_run.seed,
+        best_run_score=best_run.best_score,
     )
 
 
@@ -178,11 +255,17 @@ def run_multiple_experiments(
         )
         run_results.append(run_result)
 
-    return summarize_results(run_results)
+    return summarize_results(instance, run_results)
 
 
-def _single_run_result_to_row(result: SingleRunResult) -> dict:
+def _single_run_result_to_row(
+    result: SingleRunResult,
+    instance: ProblemInstance,
+) -> dict:
+    metadata = extract_instance_metadata(instance)
+
     return {
+        **metadata,
         "run_index": result.run_index,
         "seed": result.seed,
         "best_solution_quantities": result.best_solution.quantities,
@@ -205,6 +288,7 @@ def _single_run_result_to_row(result: SingleRunResult) -> dict:
 
 
 def save_run_results_to_csv(
+    instance: ProblemInstance,
     run_results: list[SingleRunResult],
     file_path: str | Path,
 ) -> None:
@@ -214,7 +298,7 @@ def save_run_results_to_csv(
     if not run_results:
         return
 
-    rows = [_single_run_result_to_row(result) for result in run_results]
+    rows = [_single_run_result_to_row(result, instance) for result in run_results]
     fieldnames = list(rows[0].keys())
 
     with file_path.open("w", newline="", encoding="utf-8") as csv_file:
