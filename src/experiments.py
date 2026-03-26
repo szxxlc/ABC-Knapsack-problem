@@ -24,6 +24,7 @@ class SingleRunResult:
     run_index: int
     seed: int
     random_neighbor_mode: RandomNeighborMode
+    num_food_sources: int
     best_solution: Solution
     best_score: float
     regular_cost: float
@@ -44,6 +45,7 @@ class SingleRunResult:
 class ExperimentSummary:
     run_results: list[SingleRunResult] = field(default_factory=list)
     random_neighbor_mode: RandomNeighborMode = "all"
+    num_food_sources: int = 0
 
     instance_num_products: int = 0
     instance_cart_volume_limit: float = 0.0
@@ -155,6 +157,7 @@ def run_single_experiment(
         run_index=run_index,
         seed=seed,
         random_neighbor_mode=random_neighbor_mode,
+        num_food_sources=num_food_sources,
         best_solution=best_solution,
         best_score=best_score,
         regular_cost=regular_cost,
@@ -176,11 +179,13 @@ def summarize_results(
     instance: ProblemInstance,
     run_results: list[SingleRunResult],
     random_neighbor_mode: RandomNeighborMode = "all",
+    num_food_sources: int = 0,
 ) -> ExperimentSummary:
     if not run_results:
         metadata = extract_instance_metadata(instance)
         return ExperimentSummary(
             random_neighbor_mode=random_neighbor_mode,
+            num_food_sources=num_food_sources,
             **metadata,
         )
 
@@ -205,6 +210,7 @@ def summarize_results(
     return ExperimentSummary(
         run_results=run_results,
         random_neighbor_mode=random_neighbor_mode,
+        num_food_sources=num_food_sources,
         instance_num_products=metadata["instance_num_products"],
         instance_cart_volume_limit=metadata["instance_cart_volume_limit"],
         instance_budget_limit=metadata["instance_budget_limit"],
@@ -272,6 +278,7 @@ def run_multiple_experiments(
         instance,
         run_results,
         random_neighbor_mode=random_neighbor_mode,
+        num_food_sources=num_food_sources,
     )
 
 
@@ -286,6 +293,7 @@ def _single_run_result_to_row(
         "run_index": result.run_index,
         "seed": result.seed,
         "random_neighbor_mode": result.random_neighbor_mode,
+        "num_food_sources": result.num_food_sources,
         "best_solution_quantities": result.best_solution.quantities,
         "best_score": result.best_score,
         "regular_cost": result.regular_cost,
