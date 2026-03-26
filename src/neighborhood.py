@@ -1,6 +1,10 @@
 import random
+from typing import Literal
 
 from src.problem import ProblemInstance, ShoppingRequirement, Solution
+
+
+RandomNeighborMode = Literal["increase", "decrease", "swap", "all"]
 
 
 def copy_solution(solution: Solution) -> Solution:
@@ -157,13 +161,27 @@ def generate_random_neighbor(
     instance: ProblemInstance,
     solution: Solution,
     rng: random.Random,
+    mode: RandomNeighborMode = "all",
 ) -> Solution:
     num_products = len(instance.products)
 
     if num_products == 0:
         return copy_solution(solution)
 
-    move_type = rng.choice(["increase", "decrease", "swap"])
+    available_move_types: dict[RandomNeighborMode, list[str]] = {
+        "increase": ["increase"],
+        "decrease": ["decrease"],
+        "swap": ["swap"],
+        "all": ["increase", "decrease", "swap"],
+    }
+
+    if mode not in available_move_types:
+        raise ValueError(
+            "Unsupported random neighbor mode. "
+            "Use one of: increase, decrease, swap, all."
+        )
+
+    move_type = rng.choice(available_move_types[mode])
 
     if move_type == "increase":
         product_index = rng.randrange(num_products)

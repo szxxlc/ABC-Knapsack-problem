@@ -5,6 +5,7 @@ import statistics
 import time
 
 from src.abc_algorithm import ArtificialBeeColony
+from src.neighborhood import RandomNeighborMode
 from src.evaluator import (
     are_shopping_requirements_fully_satisfied,
     calculate_actual_cost,
@@ -22,6 +23,7 @@ from src.problem import ProblemInstance, Solution
 class SingleRunResult:
     run_index: int
     seed: int
+    random_neighbor_mode: RandomNeighborMode
     best_solution: Solution
     best_score: float
     regular_cost: float
@@ -41,6 +43,7 @@ class SingleRunResult:
 @dataclass
 class ExperimentSummary:
     run_results: list[SingleRunResult] = field(default_factory=list)
+    random_neighbor_mode: RandomNeighborMode = "all"
 
     instance_num_products: int = 0
     instance_cart_volume_limit: float = 0.0
@@ -118,6 +121,7 @@ def run_single_experiment(
     trial_limit: int,
     max_iterations: int,
     max_iterations_without_improvement: int | None = None,
+    random_neighbor_mode: RandomNeighborMode = "all",
 ) -> SingleRunResult:
     abc = ArtificialBeeColony(
         instance=instance,
@@ -127,6 +131,7 @@ def run_single_experiment(
         max_iterations=max_iterations,
         max_iterations_without_improvement=max_iterations_without_improvement,
         seed=seed,
+        random_neighbor_mode=random_neighbor_mode,
     )
 
     start_time = time.perf_counter()
@@ -149,6 +154,7 @@ def run_single_experiment(
     return SingleRunResult(
         run_index=run_index,
         seed=seed,
+        random_neighbor_mode=random_neighbor_mode,
         best_solution=best_solution,
         best_score=best_score,
         regular_cost=regular_cost,
@@ -169,10 +175,14 @@ def run_single_experiment(
 def summarize_results(
     instance: ProblemInstance,
     run_results: list[SingleRunResult],
+    random_neighbor_mode: RandomNeighborMode = "all",
 ) -> ExperimentSummary:
     if not run_results:
         metadata = extract_instance_metadata(instance)
-        return ExperimentSummary(**metadata)
+        return ExperimentSummary(
+            random_neighbor_mode=random_neighbor_mode,
+            **metadata,
+        )
 
     best_scores = [result.best_score for result in run_results]
     savings_values = [result.savings for result in run_results]
@@ -194,6 +204,7 @@ def summarize_results(
 
     return ExperimentSummary(
         run_results=run_results,
+        random_neighbor_mode=random_neighbor_mode,
         instance_num_products=metadata["instance_num_products"],
         instance_cart_volume_limit=metadata["instance_cart_volume_limit"],
         instance_budget_limit=metadata["instance_budget_limit"],
@@ -237,6 +248,7 @@ def run_multiple_experiments(
     trial_limit: int,
     max_iterations: int,
     max_iterations_without_improvement: int | None = None,
+    random_neighbor_mode: RandomNeighborMode = "all",
 ) -> ExperimentSummary:
     run_results: list[SingleRunResult] = []
 
@@ -252,10 +264,15 @@ def run_multiple_experiments(
             trial_limit=trial_limit,
             max_iterations=max_iterations,
             max_iterations_without_improvement=max_iterations_without_improvement,
+            random_neighbor_mode=random_neighbor_mode,
         )
         run_results.append(run_result)
 
-    return summarize_results(instance, run_results)
+    return summarize_results(
+        instance,
+        run_results,
+        random_neighbor_mode=random_neighbor_mode,
+    )
 
 
 def _single_run_result_to_row(
@@ -268,6 +285,7 @@ def _single_run_result_to_row(
         **metadata,
         "run_index": result.run_index,
         "seed": result.seed,
+        "random_neighbor_mode": result.random_neighbor_mode,
         "best_solution_quantities": result.best_solution.quantities,
         "best_score": result.best_score,
         "regular_cost": result.regular_cost,

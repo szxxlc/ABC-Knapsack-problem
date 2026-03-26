@@ -9,6 +9,7 @@ from src.evaluator import (
     repair_hard_constraints,
 )
 from src.neighborhood import (
+    RandomNeighborMode,
     add_product_for_requirement,
     copy_solution,
     generate_random_neighbor,
@@ -44,6 +45,7 @@ class ArtificialBeeColony:
         max_iterations: int = 100,
         max_iterations_without_improvement: int | None = None,
         seed: int | None = None,
+        random_neighbor_mode: RandomNeighborMode = "all",
     ) -> None:
         self.instance = instance
         self.num_food_sources = num_food_sources
@@ -52,6 +54,7 @@ class ArtificialBeeColony:
         self.max_iterations = max_iterations
         self.max_iterations_without_improvement = max_iterations_without_improvement
         self.rng = random.Random(seed)
+        self.random_neighbor_mode = random_neighbor_mode
 
         self.food_sources: list[FoodSource] = []
         self.best_solution: Solution | None = None
@@ -139,7 +142,12 @@ class ArtificialBeeColony:
         move_type = self.rng.choice(["random", "sale", "category"])
 
         if move_type == "random":
-            return generate_random_neighbor(self.instance, solution, self.rng)
+            return generate_random_neighbor(
+                self.instance,
+                solution,
+                self.rng,
+                mode=self.random_neighbor_mode,
+            )
 
         if move_type == "sale":
             return move_towards_sale_threshold(self.instance, solution, self.rng)
@@ -167,7 +175,12 @@ class ArtificialBeeColony:
                 rng=self.rng,
             )
 
-        return generate_random_neighbor(self.instance, solution, self.rng)
+        return generate_random_neighbor(
+            self.instance,
+            solution,
+            self.rng,
+            mode=self.random_neighbor_mode,
+        )
 
     def _try_to_improve_food_source(self, source_index: int) -> None:
         current_source = self.food_sources[source_index]
