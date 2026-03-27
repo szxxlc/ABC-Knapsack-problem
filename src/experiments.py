@@ -349,3 +349,103 @@ def save_summary_to_csv(
 
         for key, value in summary_dict.items():
             writer.writerow([key, value])
+
+
+def save_score_plot_data_to_csv(
+    summaries: list[ExperimentSummary],
+    file_path: str | Path,
+) -> None:
+    """Save compact, plotting-ready score data in long format."""
+    file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    sorted_summaries = sorted(
+        summaries,
+        key=lambda summary: (summary.num_food_sources, summary.random_neighbor_mode),
+    )
+
+    rows: list[dict] = []
+    for summary in sorted_summaries:
+        run_count = len(summary.run_results)
+        feasible_rate = (
+            summary.feasible_count / run_count if run_count > 0 else 0.0
+        )
+        fully_satisfied_rate = (
+            summary.fully_satisfied_count / run_count if run_count > 0 else 0.0
+        )
+
+        rows.append(
+            {
+                "num_food_sources": summary.num_food_sources,
+                "random_neighbor_mode": summary.random_neighbor_mode,
+                "num_runs": run_count,
+                "best_score_avg": summary.best_score_avg,
+                "best_score_median": summary.best_score_median,
+                "best_score_min": summary.best_score_min,
+                "best_score_max": summary.best_score_max,
+                "best_score_std": summary.best_score_std,
+                "feasible_rate": feasible_rate,
+                "fully_satisfied_rate": fully_satisfied_rate,
+                "execution_time_avg": summary.execution_time_avg,
+            }
+        )
+
+    fieldnames = [
+        "num_food_sources",
+        "random_neighbor_mode",
+        "num_runs",
+        "best_score_avg",
+        "best_score_median",
+        "best_score_min",
+        "best_score_max",
+        "best_score_std",
+        "feasible_rate",
+        "fully_satisfied_rate",
+        "execution_time_avg",
+    ]
+
+    with file_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def save_score_plot_pivot_to_csv(
+    summaries: list[ExperimentSummary],
+    file_path: str | Path,
+) -> None:
+    """Save score averages in wide format: one column per mode."""
+    file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    modes_in_order: list[RandomNeighborMode] = []
+    seen_modes: set[RandomNeighborMode] = set()
+    for summary in summaries:
+        mode = summary.random_neighbor_mode
+        if mode not in seen_modes:
+            seen_modes.add(mode)
+            modes_in_order.append(mode)
+
+    food_source_sizes = sorted(
+        {summary.num_food_sources for summary in summaries}
+    )
+
+    score_lookup = {
+        (summary.num_food_sources, summary.random_neighbor_mode): summary.best_score_avg
+        for summary in summaries
+    }
+
+    fieldnames = ["num_food_sources", *[f"score_avg_{mode}" for mode in modes_in_order]]
+
+    with file_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for num_food_sources in food_source_sizes:
+            row = {"num_food_sources": num_food_sources}
+            for mode in modes_in_order:
+                row[f"score_avg_{mode}"] = score_lookup.get(
+                    (num_food_sources, mode),
+                    "",
+                )
+            writer.writerow(row)

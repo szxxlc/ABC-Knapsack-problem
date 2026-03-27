@@ -21,11 +21,13 @@ def main():
         "all",
     ]
 
-    food_source_sizes: list[int] = [2, 4, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100]
+    # food_source_sizes: list[int] = [2, 4, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100]
+    food_source_sizes: list[int] = [2, 4, 6, 8, 10, 12, 15]
+    NUMBER_OF_RUNS = 50
 
     # Initialize and run experiments
     runner = ExperimentRunner(
-        num_runs=10,
+        num_runs=NUMBER_OF_RUNS,
         base_seed=100,
         num_onlooker_bees=8,
         trial_limit=10,

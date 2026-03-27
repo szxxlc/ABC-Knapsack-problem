@@ -1,8 +1,11 @@
 import time
 from src.experiments import (
+    ExperimentSummary,
     run_multiple_experiments,
     save_run_results_to_csv,
     save_summary_to_csv,
+    save_score_plot_data_to_csv,
+    save_score_plot_pivot_to_csv,
 )
 from src.neighborhood import RandomNeighborMode
 from src.problem import ProblemInstance
@@ -38,6 +41,7 @@ class ExperimentRunner:
         total_combinations = len(food_source_sizes) * len(random_neighbor_modes)
         current_combination = 0
         combination_times: list[float] = []
+        all_summaries: list[ExperimentSummary] = []
 
         print(f"Starting experiments: {total_combinations} combinations")
         print(f"Food source sizes: {food_source_sizes}")
@@ -49,11 +53,13 @@ class ExperimentRunner:
                 current_combination += 1
                 combination_start_time = time.time()
 
-                self._run_and_save_experiment(
+                summary = self._run_experiment(
                     instance,
                     num_food_sources,
                     mode,
                 )
+                all_summaries.append(summary)
+                self._save_detailed_results(summary, num_food_sources, mode, instance)
 
                 combination_duration = time.time() - combination_start_time
                 combination_times.append(combination_duration)
@@ -67,17 +73,19 @@ class ExperimentRunner:
                     mode,
                 )
 
+        self._save_aggregated_results(all_summaries)
+
         program_end_time = time.time()
         total_time = program_end_time - program_start_time
         self._print_final_summary(total_time, combination_times, total_combinations)
 
-    def _run_and_save_experiment(
+    def _run_experiment(
         self,
         instance: ProblemInstance,
         num_food_sources: int,
         mode: RandomNeighborMode,
-    ) -> None:
-        """Run a single experiment configuration and save results."""
+    ) -> ExperimentSummary:
+        """Run a single experiment configuration and return summary."""
         summary = run_multiple_experiments(
             instance=instance,
             num_runs=self.num_runs,
@@ -90,8 +98,8 @@ class ExperimentRunner:
             random_neighbor_mode=mode,
         )
 
-        self._print_detailed_results(summary, num_food_sources, mode)
-        self._save_results(summary, num_food_sources, mode, instance)
+        # self._print_detailed_results(summary, num_food_sources, mode)
+        return summary
 
     def _print_progress(
         self,
@@ -194,16 +202,41 @@ class ExperimentRunner:
             )
         print()
 
-    def _save_results(
+    def _save_aggregated_results(
+        self,
+        summaries: list[ExperimentSummary],
+    ) -> None:
+        """Save compact experiment data to a small number of CSV files."""
+        long_format_path = "data/aggregated_results/score_by_mode_food_source.csv"
+        pivot_format_path = "data/aggregated_results/score_by_mode_food_source_pivot.csv"
+
+        save_score_plot_data_to_csv(
+            summaries,
+            long_format_path,
+        )
+
+        save_score_plot_pivot_to_csv(
+            summaries,
+            pivot_format_path,
+        )
+
+        print(f"Aggregated plotting data saved to {long_format_path}")
+        print(f"Pivot plotting data saved to {pivot_format_path}")
+
+    def _save_detailed_results(
         self,
         summary,
         num_food_sources: int,
         mode: str,
         instance: ProblemInstance,
     ) -> None:
-        """Save experiment results to CSV files."""
-        mode_run_results_path = f"data/results/run_results_{num_food_sources}_{mode}.csv"
-        mode_summary_path = f"data/results/summary_{num_food_sources}_{mode}.csv"
+        """Save detailed per-combination files as backup data."""
+        mode_run_results_path = (
+            f"data/detailed_results/run_results/run_results_{num_food_sources}_{mode}.csv"
+        )
+        mode_summary_path = (
+            f"data/detailed_results/summary/summary_{num_food_sources}_{mode}.csv"
+        )
 
         save_run_results_to_csv(
             instance,
@@ -216,8 +249,8 @@ class ExperimentRunner:
             mode_summary_path,
         )
 
-        print(f"Results saved to {mode_run_results_path}")
-        print(f"Summary saved to {mode_summary_path}")
+        print(f"Detailed results saved to {mode_run_results_path}")
+        print(f"Detailed summary saved to {mode_summary_path}")
 
     def _print_final_summary(
         self,
