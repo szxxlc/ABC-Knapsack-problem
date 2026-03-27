@@ -184,6 +184,8 @@ $actualCost_i(x_i) = x_i \cdot p_i$
 
 ### Funkcja celu
 
+$ F(x)=\max{savings(x)-penalty_c(x)} = \max{regularCost(x) - actualCost(x) - penalty_c(x)}$
+
 #### Koszt regularny
 
 Koszt regularny wszystkich produktów w koszyku:
