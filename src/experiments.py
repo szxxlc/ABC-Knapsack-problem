@@ -23,6 +23,7 @@ from src.problem import ProblemInstance, Solution
 class SingleRunResult:
     run_index: int
     seed: int
+    instance_seed: int | None
     random_neighbor_mode: RandomNeighborMode
     num_food_sources: int
     best_solution: Solution
@@ -118,6 +119,7 @@ def run_single_experiment(
     instance: ProblemInstance,
     run_index: int,
     seed: int,
+    instance_seed: int | None,
     num_food_sources: int,
     num_onlooker_bees: int,
     trial_limit: int,
@@ -156,6 +158,7 @@ def run_single_experiment(
     return SingleRunResult(
         run_index=run_index,
         seed=seed,
+        instance_seed=instance_seed,
         random_neighbor_mode=random_neighbor_mode,
         num_food_sources=num_food_sources,
         best_solution=best_solution,
@@ -249,6 +252,7 @@ def run_multiple_experiments(
     instance: ProblemInstance,
     num_runs: int,
     base_seed: int,
+    instance_seed: int | None,
     num_food_sources: int,
     num_onlooker_bees: int,
     trial_limit: int,
@@ -265,6 +269,7 @@ def run_multiple_experiments(
             instance=instance,
             run_index=run_index,
             seed=seed,
+            instance_seed=instance_seed,
             num_food_sources=num_food_sources,
             num_onlooker_bees=num_onlooker_bees,
             trial_limit=trial_limit,
@@ -292,6 +297,7 @@ def _single_run_result_to_row(
         **metadata,
         "run_index": result.run_index,
         "seed": result.seed,
+        "instance_seed": result.instance_seed,
         "random_neighbor_mode": result.random_neighbor_mode,
         "num_food_sources": result.num_food_sources,
         "best_solution_quantities": result.best_solution.quantities,

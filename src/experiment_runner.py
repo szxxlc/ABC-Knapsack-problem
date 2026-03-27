@@ -1,7 +1,9 @@
 import time
 from src.experiments import (
     ExperimentSummary,
+    SingleRunResult,
     run_multiple_experiments,
+    summarize_results,
     save_run_results_to_csv,
     save_summary_to_csv,
     save_score_plot_data_to_csv,
@@ -32,7 +34,7 @@ class ExperimentRunner:
 
     def run_all_experiments(
         self,
-        instance: ProblemInstance,
+        instances_with_seeds: list[tuple[int, ProblemInstance]],
         food_source_sizes: list[int],
         random_neighbor_modes: list[RandomNeighborMode],
     ) -> None:
@@ -44,6 +46,8 @@ class ExperimentRunner:
         all_summaries: list[ExperimentSummary] = []
 
         print(f"Starting experiments: {total_combinations} combinations")
+        print(f"Number of instance seeds: {len(instances_with_seeds)}")
+        print(f"Number of runs: {self.num_runs}")
         print(f"Food source sizes: {food_source_sizes}")
         print(f"Random neighbor modes: {random_neighbor_modes}")
         print()
@@ -54,12 +58,11 @@ class ExperimentRunner:
                 combination_start_time = time.time()
 
                 summary = self._run_experiment(
-                    instance,
+                    instances_with_seeds,
                     num_food_sources,
                     mode,
                 )
                 all_summaries.append(summary)
-                self._save_detailed_results(summary, num_food_sources, mode, instance)
 
                 combination_duration = time.time() - combination_start_time
                 combination_times.append(combination_duration)
@@ -81,25 +84,38 @@ class ExperimentRunner:
 
     def _run_experiment(
         self,
-        instance: ProblemInstance,
+        instances_with_seeds: list[tuple[int, ProblemInstance]],
         num_food_sources: int,
         mode: RandomNeighborMode,
     ) -> ExperimentSummary:
-        """Run a single experiment configuration and return summary."""
-        summary = run_multiple_experiments(
-            instance=instance,
-            num_runs=self.num_runs,
-            base_seed=self.base_seed,
-            num_food_sources=num_food_sources,
-            num_onlooker_bees=self.num_onlooker_bees,
-            trial_limit=self.trial_limit,
-            max_iterations=self.max_iterations,
-            max_iterations_without_improvement=self.max_iterations_without_improvement,
-            random_neighbor_mode=mode,
-        )
+        """Run one configuration across many instance seeds and return merged summary."""
+        all_run_results: list[SingleRunResult] = []
 
-        # self._print_detailed_results(summary, num_food_sources, mode)
-        return summary
+        for instance_seed, instance in instances_with_seeds:
+            summary = run_multiple_experiments(
+                instance=instance,
+                num_runs=self.num_runs,
+                base_seed=self.base_seed,
+                instance_seed=instance_seed,
+                num_food_sources=num_food_sources,
+                num_onlooker_bees=self.num_onlooker_bees,
+                trial_limit=self.trial_limit,
+                max_iterations=self.max_iterations,
+                max_iterations_without_improvement=self.max_iterations_without_improvement,
+                random_neighbor_mode=mode,
+            )
+
+            all_run_results.extend(summary.run_results)
+            self._save_detailed_results(summary, num_food_sources, mode, instance, instance_seed)
+
+        # Metadata in merged summary is taken from the first instance.
+        _, reference_instance = instances_with_seeds[0]
+        return summarize_results(
+            instance=reference_instance,
+            run_results=all_run_results,
+            random_neighbor_mode=mode,
+            num_food_sources=num_food_sources,
+        )
 
     def _print_progress(
         self,
@@ -229,13 +245,16 @@ class ExperimentRunner:
         num_food_sources: int,
         mode: str,
         instance: ProblemInstance,
+        instance_seed: int,
     ) -> None:
         """Save detailed per-combination files as backup data."""
         mode_run_results_path = (
-            f"data/detailed_results/run_results/run_results_{num_food_sources}_{mode}.csv"
+            "data/detailed_results/run_results/"
+            f"run_results_{num_food_sources}_{mode}_instance_{instance_seed}.csv"
         )
         mode_summary_path = (
-            f"data/detailed_results/summary/summary_{num_food_sources}_{mode}.csv"
+            "data/detailed_results/summary/"
+            f"summary_{num_food_sources}_{mode}_instance_{instance_seed}.csv"
         )
 
         save_run_results_to_csv(

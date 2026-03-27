@@ -5,11 +5,101 @@ from src.problem import ProblemInstance, Product, Sale, ShoppingRequirement
 
 
 CATEGORY_PRODUCT_NAMES = {
-    "Fruit": ["Apple", "Banana", "Pear", "Orange", "Grapes", "Kiwi", "Watermelon", "Dragonfruit"],
-    "Vegetables": ["Tomato", "Cucumber", "Carrot", "Pepper", "Onion", "Lettuce", "Cauliflower", "Potato"],
-    "Dairy": ["Milk", "Yogurt", "Cheese", "Butter", "Cream", "Kefir", "Cottage Cheese"],
-    "Bakery": ["Bread", "Roll", "Baguette", "Toast", "Croissant", "Bagel"],
-    "Beverages": ["Water", "Juice", "Tea", "Coffee", "Cola", "Lemonade", "Beer"],
+    "Fruit": [
+        "Apple",
+        "Banana",
+        "Pear",
+        "Orange",
+        "Grapes",
+        "Kiwi",
+        "Watermelon",
+        "Dragonfruit",
+        "Mango",
+        "Pineapple",
+        "Plum",
+        "Peach",
+        "Apricot",
+        "Cherry",
+        "Blueberry",
+        "Strawberry",
+        "Raspberry",
+        "Lime",
+        "Lemon",
+        "Pomegranate",
+    ],
+    "Vegetables": [
+        "Tomato",
+        "Cucumber",
+        "Carrot",
+        "Pepper",
+        "Onion",
+        "Lettuce",
+        "Cauliflower",
+        "Potato",
+        "Broccoli",
+        "Spinach",
+        "Pumpkin",
+        "Zucchini",
+        "Eggplant",
+        "Leek",
+        "Garlic",
+        "Celery",
+        "Radish",
+        "Beetroot",
+        "Green Beans",
+        "Peas",
+    ],
+    "Dairy": [
+        "Milk",
+        "Yogurt",
+        "Cheese",
+        "Butter",
+        "Cream",
+        "Kefir",
+        "Cottage Cheese",
+        "Skyr",
+        "Mozzarella",
+        "Feta",
+        "Ricotta",
+        "Greek Yogurt",
+        "Goat Cheese",
+        "Sour Cream",
+        "Mascarpone",
+    ],
+    "Bakery": [
+        "Bread",
+        "Roll",
+        "Baguette",
+        "Toast",
+        "Croissant",
+        "Bagel",
+        "Ciabatta",
+        "Brioche",
+        "Pretzel",
+        "Pita",
+        "Whole Grain Bread",
+        "Rye Bread",
+        "Muffin",
+        "Donut",
+        "Flatbread",
+    ],
+    "Beverages": [
+        "Water",
+        "Juice",
+        "Tea",
+        "Coffee",
+        "Cola",
+        "Lemonade",
+        "Beer",
+        "Sparkling Water",
+        "Energy Drink",
+        "Iced Tea",
+        "Coconut Water",
+        "Orange Juice",
+        "Apple Juice",
+        "Tonic Water",
+        "Ginger Ale",
+    ],
 }
 
 AVAILABLE_SALES = [
@@ -17,6 +107,9 @@ AVAILABLE_SALES = [
     (2, 1),
     (2, 2),
     (3, 1),
+    (3, 2),
+    (4, 1),
+    (4, 2),
 ]
 
 
@@ -38,8 +131,8 @@ def generate_random_product(
     rng: random.Random,
     sale_probability: float = 0.5,
 ) -> Product:
-    base_price = round(rng.uniform(2.0, 15.0), 2)
-    unit_volume = round(rng.uniform(0.2, 2.5), 2)
+    base_price = round(rng.uniform(1.5, 24.0), 2)
+    unit_volume = round(rng.uniform(0.15, 3.2), 2)
     sale = generate_random_sale(rng, sale_probability)
 
     return Product(
@@ -87,9 +180,11 @@ def generate_products(
 def generate_shopping_requirements(
     products: list[Product],
     rng: random.Random,
-    min_requirements: int = 2,
-    max_requirements: int = 4,
-    max_minimum: int = 3,
+    min_requirements: int = 3,
+    max_requirements: int = 5,
+    max_minimum: int = 6,
+    min_penalty_per_missing: float = 4.0,
+    max_penalty_per_missing: float = 15.0,
 ) -> list[ShoppingRequirement]:
     available_categories = sorted({product.category for product in products})
 
@@ -107,7 +202,10 @@ def generate_shopping_requirements(
     for category in selected_categories:
         minimum = rng.randint(1, max_minimum)
         distinct_required = rng.choice([True, False])
-        penalty_per_missing = round(rng.uniform(1.0, 5.0), 2)
+        penalty_per_missing = round(
+            rng.uniform(min_penalty_per_missing, max_penalty_per_missing),
+            2,
+        )
 
         requirement = ShoppingRequirement(
             category=category,
@@ -125,6 +223,11 @@ def generate_problem_instance(
     cart_volume_limit: float,
     budget_limit: Optional[float] = None,
     sale_probability: float = 0.5,
+    min_requirements: int = 3,
+    max_requirements: int = 5,
+    max_requirement_minimum: int = 6,
+    min_penalty_per_missing: float = 4.0,
+    max_penalty_per_missing: float = 15.0,
     seed: Optional[int] = None,
 ) -> ProblemInstance:
     rng = random.Random(seed)
@@ -138,6 +241,11 @@ def generate_problem_instance(
     shopping_requirements = generate_shopping_requirements(
         products=products,
         rng=rng,
+        min_requirements=min_requirements,
+        max_requirements=max_requirements,
+        max_minimum=max_requirement_minimum,
+        min_penalty_per_missing=min_penalty_per_missing,
+        max_penalty_per_missing=max_penalty_per_missing,
     )
 
     return ProblemInstance(
